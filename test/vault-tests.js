@@ -50,5 +50,18 @@ describe("Creating Royalty Vault", function () {
 
     });
 
+    it("Owner of RoyaltyVault must be RoyaltyFactory", async function () {
+
+        royaltyVaultContract = await (
+            await ethers.getContractAt("RoyaltyVault", royaltyVault)
+          ).deployed();
+
+        const owner = await royaltyVaultContract.owner();
+        expect(owner).to.eq(
+            royaltyFactory.address
+        );
+
+    });
+
 
 });
