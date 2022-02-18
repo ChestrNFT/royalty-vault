@@ -256,8 +256,8 @@
       ]
     },
     "/home/hirenkavad/work/chestr/royalty-vault/contracts/RoyaltyVaultFactory.sol": {
-      "lastModificationDate": 1645183803455,
-      "contentHash": "5548699133b58c725c42681f4f4381a7",
+      "lastModificationDate": 1645184797921,
+      "contentHash": "e848bef519f1623522956a709db9b70e",
       "sourceName": "contracts/RoyaltyVaultFactory.sol",
       "solcConfig": {
         "version": "0.8.4",
