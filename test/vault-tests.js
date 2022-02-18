@@ -14,8 +14,12 @@ const deployWeth = async () => {
 };
 
 const createVault =async (royaltyFactory,collectionContract,wEth)=>{
-    royaltyVaultAddress=await royaltyFactory.createVault(collectionContract,wEth);
-    return await (await ethers.getContractAt("RoyaltyVault", royaltyVaultAddress)).deployed();
+    let royaltyVault;
+    royaltyTx = await royaltyFactory.createVault(collectionContract,wEth);
+    const royaltyVaultTx = await royaltyTx.wait(1)
+    const event = royaltyVaultTx.events.find(event => event.event === 'VaultCreated');
+    [royaltyVault] = event.args;
+    return royaltyVault;
 }
   
 describe("Creating Royalty Vault", function () {
@@ -25,47 +29,26 @@ describe("Creating Royalty Vault", function () {
     before( async function() {
         [
           funder,
-          account1,
-          account2,
           collectionContract,
         ] = await ethers.getSigners();
     
-        claimers = [account1, account2];
-    
         wEth = await deployWeth();
         royaltyFactory = await deployRoyaltyFactory();
-
-        royaltyTx = await royaltyFactory.createVault(collectionContract.address,wEth.address);
-        const royaltyVaultTx = await royaltyTx.wait(1)
-        const event = royaltyVaultTx.events.find(event => event.event === 'VaultCreated');
-        [royaltyVault] = event.args;
+        royaltyVault = await createVault(royaltyFactory,collectionContract.address,wEth.address);
 
     });
 
-  it("Should return correct RoyaltVault balance", async function () {
-    
-    await wEth
-          .connect(funder)
-          .transfer(royaltyVault, ethers.utils.parseEther("1"));
-    const balance = await wEth.balanceOf(royaltyVault);
+    it("Should return correct RoyaltVault balance", async function () {
+        await wEth
+            .connect(funder)
+            .transfer(royaltyVault, ethers.utils.parseEther("1"));
+        const balance = await wEth.balanceOf(royaltyVault);
 
-    expect(await balance).to.eq(
-        ethers.utils.parseEther("1").toString()
-    );
+        expect(await balance).to.eq(
+            ethers.utils.parseEther("1").toString()
+        );
 
-  });
+    });
 
-  it("Should return correct RoyaltVault balance", async function () {
-    
-    await wEth
-          .connect(funder)
-          .transfer(royaltyVault, ethers.utils.parseEther("1"));
-    const balance = await wEth.balanceOf(royaltyVault);
-
-    expect(await balance).to.eq(
-        ethers.utils.parseEther("1").toString()
-    );
-    
-  });
 
 });
