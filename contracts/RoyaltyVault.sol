@@ -2,13 +2,14 @@
 pragma solidity ^0.8.4;
 
 import {IRoyaltyVault} from "../interfaces/IRoyaltyVault.sol";
+import {ISplitter} from "../interfaces/ISplitter.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract RoyaltyVault is IRoyaltyVault, ERC165, Ownable {
 
-    address public splitter;
+    address private splitter;
     address public collectionContract;
     address public wethAddress;
 
@@ -54,7 +55,9 @@ contract RoyaltyVault is IRoyaltyVault, ERC165, Ownable {
         uint256 balanceOfVault = getVaultBalance();
 
         require(balanceOfVault > 0,"Vault has no WETH to send");
+        require(splitter != address(0),"Splitter is not set");
         require(IERC20(wethAddress).transfer(splitter, balanceOfVault) == true, "Failed to transfer WETH to splitter");
+        require(ISplitter(splitter).incrementWindow(balanceOfVault) == true, "Failed to increment splitter window");
         
         emit SentToSplitter(splitter, balanceOfVault);
     }

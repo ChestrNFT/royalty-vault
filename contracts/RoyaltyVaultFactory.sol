@@ -31,7 +31,7 @@ contract RoyaltyVaultFactory {
     * @param _vault address to vault to set splitter.
     * @param _splitter address which needs to be set.
     */
-    function setSpliter(address _vault, address _splitter) public {
+    function setSplitter(address _vault, address _splitter) public {
         IRoyaltyVault(_vault).setSplitter(_splitter);
     }
 
