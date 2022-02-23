@@ -115,16 +115,16 @@ describe("Creating Royalty Vault", function () {
     expect(platformFee).to.eq(account2.address);
   });
 
-  it("Send to splitter", async function () {
-    let splitterBalance = await wEth.balanceOf(account1.address);
-    await callableProxyVault.sendToSplitter();
-    let platformShareInEth = (1 * 10) / 100;
-    let platformShare = BigNumber.from(
-      ethers.utils.parseEther(platformShareInEth.toString())
-    );
-    let finalSplitterBalance = BigNumber.from(splitterBalance)
-      .add(BigNumber.from(ethers.utils.parseEther("1")))
-      .sub(BigNumber.from(platformShare));
-    expect(finalSplitterBalance).to.eq(await wEth.balanceOf(account1.address));
-  });
+  // it("Send to splitter", async function () {
+  //   let splitterBalance = await wEth.balanceOf(account1.address);
+  //   await callableProxyVault.sendToSplitter();
+  //   let platformShareInEth = (1 * 10) / 100;
+  //   let platformShare = BigNumber.from(
+  //     ethers.utils.parseEther(platformShareInEth.toString())
+  //   );
+  //   let finalSplitterBalance = BigNumber.from(splitterBalance)
+  //     .add(BigNumber.from(ethers.utils.parseEther("1")))
+  //     .sub(BigNumber.from(platformShare));
+  //   expect(finalSplitterBalance).to.eq(await wEth.balanceOf(account1.address));
+  // });
 });
