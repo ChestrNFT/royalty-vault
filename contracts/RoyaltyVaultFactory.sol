@@ -1,38 +1,73 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.4;
 
+import {ProxyVault} from "./ProxyVault.sol";
 import {IRoyaltyVault} from "../interfaces/IRoyaltyVault.sol";
-import {RoyaltyVault} from "./RoyaltyVault.sol";
 
 contract RoyaltyVaultFactory {
-    
-    address[] public vaults;
-    
-    // **** Events ****
+    /**** Immutable data ****/
+    address public immutable royaltyVault;
+
+    /**** Mutable data ****/
+    address public royaltyAsset;
+    address public splitter;
+
+    /**** Events ****/
 
     event VaultCreated(address vault);
 
     /**
-     * @dev Create RoyaltyVault
-     * @param _collectionContract address of the collection contract.
-     * @param _wethAddress address of the WETH contract.
-     * @return address of the newly created RoyaltyVault.
+     * @dev Constructor
+     * @param _royaltyVault address of the RoyaltyVault logic contract
      */
-
-    function createVault(address _collectionContract, address _wethAddress) public returns (address) {
-        RoyaltyVault newVault = new RoyaltyVault(_collectionContract,_wethAddress);
-        vaults.push(address(newVault));
-        emit VaultCreated(address(newVault));
-        return address(newVault);
+    constructor(address _royaltyVault) {
+        royaltyVault = _royaltyVault;
     }
 
     /**
-    * @dev set splitter for vault.
-    * @param _vault address to vault to set splitter.
-    * @param _splitter address which needs to be set.
-    */
-    function setSplitter(address _vault, address _splitter) public {
-        IRoyaltyVault(_vault).setSplitter(_splitter);
+     * @dev Create RoyaltyVault
+     * @param _splitter address of the splitter contract.
+     * @param _royaltyAsset address of the assets which will be splitted.
+     */
+
+    function createVault(address _splitter, address _royaltyAsset)
+        external
+        returns (address vault)
+    {
+        splitter = _splitter;
+        royaltyAsset = _royaltyAsset;
+
+        vault = address(
+            new ProxyVault{salt: keccak256(abi.encode(_splitter))}()
+        );
+
+        delete splitter;
+        delete royaltyAsset;
     }
 
+    /**
+     * @dev Set Platform fee for collection contract.
+     * @param _platformFee Platform fee in scaled percentage. (5% = 200)
+     * @param _vault vault address.
+     */
+    function setPlatformFee(address _vault, uint256 _platformFee) external {
+        IRoyaltyVault(_vault).setPlatformFee(_platformFee);
+    }
+
+    /**
+     * @dev Set Platform fee recipient for collection contract.
+     * @param _vault vault address.
+     * @param _platformFeeRecipient Platform fee recipient.
+     */
+    function setPlatformFeeRecipient(
+        address _vault,
+        address _platformFeeRecipient
+    ) external {
+        require(_vault != address(0), "Invalid vault");
+        require(
+            _platformFeeRecipient != address(0),
+            "Invalid platform fee recipient"
+        );
+        IRoyaltyVault(_vault).setPlatformFeeRecipient(_platformFeeRecipient);
+    }
 }

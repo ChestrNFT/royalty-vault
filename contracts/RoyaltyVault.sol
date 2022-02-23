@@ -2,50 +2,25 @@
 pragma solidity ^0.8.4;
 
 import {IRoyaltyVault} from "../interfaces/IRoyaltyVault.sol";
+import {VaultStorage} from "./VaultStorage.sol";
 import {ISplitter} from "../interfaces/ISplitter.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-contract RoyaltyVault is IRoyaltyVault, ERC165, Ownable {
+contract RoyaltyVault is VaultStorage, IRoyaltyVault, ERC165, Ownable {
+    /**** Events ****/
+    event RoyaltySentToSplitter(address indexed splitter, uint256 amount);
+    event FeeSentToPlatform(
+        address indexed platformFeeRecipient,
+        uint256 amount
+    );
 
-    address private splitter;
-    address public collectionContract;
-    address public wethAddress;
-
-    event SentToSplitter(address indexed splitter, uint256 amount);
-    
-    /**
-     * @dev RoyaltyVault Constructor
-     * @param _collectionContract address of the collection contract
-     * @param _wethAddress address of the WETH contract
-     */
-    constructor(
-        address _collectionContract, 
-        address _wethAddress
-    ) {
-        collectionContract = _collectionContract;
-        wethAddress = _wethAddress;
-    }
-
-    /**
-     * @dev Getting Collection Contract of Vault.
-     */
-    function getCollectionContract() public view override returns (address) {
-        return collectionContract;
-    }
-
-    /**
-     * @dev Getting Splitter for Vault.
-     */
-    function getSplitter() public view override returns (address){
-        return splitter;
-    }
     /**
      * @dev Getting WETH balance of Vault.
      */
-    function getVaultBalance() public view override returns (uint256){
-        return IERC20(wethAddress).balanceOf(address(this));
+    function getVaultBalance() public view override returns (uint256) {
+        return IERC20(royaltyAsset).balanceOf(address(this));
     }
 
     /**
@@ -54,27 +29,62 @@ contract RoyaltyVault is IRoyaltyVault, ERC165, Ownable {
     function sendToSplitter() external override {
         uint256 balanceOfVault = getVaultBalance();
 
-        require(balanceOfVault > 0,"Vault has no WETH to send");
-        require(splitter != address(0),"Splitter is not set");
-        require(IERC20(wethAddress).transfer(splitter, balanceOfVault) == true, "Failed to transfer WETH to splitter");
-        require(ISplitter(splitter).incrementWindow(balanceOfVault) == true, "Failed to increment splitter window");
-        
-        emit SentToSplitter(splitter, balanceOfVault);
+        require(balanceOfVault > 0, "Vault has no WETH to send");
+        require(splitter != address(0), "Splitter is not set");
+
+        uint256 platformShare = (balanceOfVault * platformFee) / 10000;
+        uint256 splitterShare = balanceOfVault - platformShare;
+
+        require(
+            IERC20(royaltyAsset).transfer(splitter, splitterShare) == true,
+            "Failed to transfer WETH to splitter"
+        );
+        require(
+            ISplitter(splitter).incrementWindow(splitterShare) == true,
+            "Failed to increment splitter window"
+        );
+        require(
+            IERC20(royaltyAsset).transfer(
+                platformFeeRecipient,
+                platformShare
+            ) == true,
+            "Failed to transfer WETH to platform fee recipient"
+        );
+
+        emit RoyaltySentToSplitter(splitter, balanceOfVault);
+        emit FeeSentToPlatform(platformFeeRecipient, platformShare);
     }
 
     /**
-     * @dev Set Splitter address to RoyaltyVault.
-     * @param _splitter Address of Splitter.
+     * @dev Set Platform fee for collection contract.
+     * @param _platformFee Platform fee in scaled percentage.
      */
-    function setSplitter(address _splitter) external override onlyOwner {
-        splitter = _splitter;
+    function setPlatformFee(uint256 _platformFee) external override onlyOwner {
+        platformFee = _platformFee;
+    }
+
+    /**
+     * @dev Set Platform fee recipient for collection.
+     * @param _platformFeeRecipient Platform fee recipient address
+     */
+    function setPlatformFeeRecipient(address _platformFeeRecipient)
+        external
+        override
+        onlyOwner
+    {
+        platformFeeRecipient = _platformFeeRecipient;
     }
 
     /**
      * @dev Checks for support of IRoyaltyVault.
      */
-    function supportsInterface(bytes4 interfaceId) public view virtual override(IRoyaltyVault,ERC165) returns (bool) {
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(IRoyaltyVault, ERC165)
+        returns (bool)
+    {
         return interfaceId == type(IRoyaltyVault).interfaceId;
     }
-    
 }

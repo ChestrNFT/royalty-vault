@@ -1,67 +1,130 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const { BigNumber } = require("ethers");
 
-const deployRoyaltyFactory = async () => {
-    const RoyaltyVaultFactoryContract = await ethers.getContractFactory("RoyaltyVaultFactory");
-    const royaltyVaultFactory = await RoyaltyVaultFactoryContract.deploy();
-    return await royaltyVaultFactory.deployed();
+const deployRoyaltyVault = async () => {
+  const RoyaltyVaultContract = await ethers.getContractFactory("RoyaltyVault");
+  const royaltyVault = await RoyaltyVaultContract.deploy();
+  return await royaltyVault.deployed();
+};
+
+const deployRoyaltyFactory = async (royaltyVault) => {
+  const RoyaltyVaultFactoryContract = await ethers.getContractFactory(
+    "RoyaltyVaultFactory"
+  );
+  const royaltyVaultFactory = await RoyaltyVaultFactoryContract.deploy(
+    royaltyVault
+  );
+  return await royaltyVaultFactory.deployed();
 };
 
 const deployWeth = async () => {
-    const myWETHContract = await ethers.getContractFactory("WETH");
-    const myWETH = await myWETHContract.deploy();
-    return await myWETH.deployed();
+  const myWETHContract = await ethers.getContractFactory("WETH");
+  const myWETH = await myWETHContract.deploy();
+  return await myWETH.deployed();
 };
 
-const createVault =async (royaltyFactory,collectionContract,wEth)=>{
-    let royaltyVault;
-    royaltyTx = await royaltyFactory.createVault(collectionContract,wEth);
-    const royaltyVaultTx = await royaltyTx.wait(1)
-    const event = royaltyVaultTx.events.find(event => event.event === 'VaultCreated');
-    [royaltyVault] = event.args;
-    return royaltyVault;
-}
-  
+const createVault = async (royaltyFactory, collectionContract, wEth) => {
+  let royaltyVault;
+  royaltyTx = await royaltyFactory.createVault(collectionContract, wEth);
+  const royaltyVaultTx = await royaltyTx.wait(1);
+  const event = royaltyVaultTx.events.find(
+    (event) => event.event === "VaultCreated"
+  );
+  [royaltyVault] = event.args;
+  return royaltyVault;
+};
+
 describe("Creating Royalty Vault", function () {
+  let royaltyFactory,
+    wEth,
+    royaltyVault,
+    collectionContract,
+    proxyVault,
+    callableProxyVault,
+    funder,
+    account1,
+    account2;
 
-    let royaltyFactory,wEth,royaltyVault,collectionContract,funder,account1,account2;
+  before(async function () {
+    [funder, collectionContract, account1, account2] =
+      await ethers.getSigners();
 
-    before( async function() {
-        [
-          funder,
-          collectionContract,
-        ] = await ethers.getSigners();
-    
-        wEth = await deployWeth();
-        royaltyFactory = await deployRoyaltyFactory();
-        royaltyVault = await createVault(royaltyFactory,collectionContract.address,wEth.address);
+    wEth = await deployWeth();
+    royaltyVault = await deployRoyaltyVault();
+    royaltyFactory = await deployRoyaltyFactory(royaltyVault.address);
+    let splitter = account1.address;
 
-    });
+    await royaltyFactory.connect(funder).createVault(splitter, wEth.address);
 
-    it("Should return correct RoyaltVault balance", async function () {
-        await wEth
-            .connect(funder)
-            .transfer(royaltyVault, ethers.utils.parseEther("1"));
-        const balance = await wEth.balanceOf(royaltyVault);
+    // Compute address.
+    const constructorArgs = ethers.utils.defaultAbiCoder.encode(
+      ["address"],
+      [splitter]
+    );
+    const salt = ethers.utils.keccak256(constructorArgs);
+    const proxyBytecode = (await ethers.getContractFactory("ProxyVault"))
+      .bytecode;
+    const codeHash = ethers.utils.keccak256(proxyBytecode);
+    const proxyAddress = await ethers.utils.getCreate2Address(
+      royaltyFactory.address,
+      salt,
+      codeHash
+    );
 
-        expect(await balance).to.eq(
-            ethers.utils.parseEther("1").toString()
-        );
+    proxyVault = await (
+      await ethers.getContractAt("ProxyVault", proxyAddress)
+    ).deployed();
 
-    });
+    callableProxyVault = await (
+      await ethers.getContractAt("RoyaltyVault", proxyVault.address)
+    ).deployed();
+  });
 
-    it("Owner of RoyaltyVault must be RoyaltyFactory", async function () {
+  it("Should return correct RoyaltVault balance", async function () {
+    await wEth
+      .connect(funder)
+      .transfer(proxyVault.address, ethers.utils.parseEther("1"));
+    const balance = await wEth.balanceOf(proxyVault.address);
 
-        royaltyVaultContract = await (
-            await ethers.getContractAt("RoyaltyVault", royaltyVault)
-          ).deployed();
+    expect(await balance).to.eq(ethers.utils.parseEther("1").toString());
+  });
 
-        const owner = await royaltyVaultContract.owner();
-        expect(owner).to.eq(
-            royaltyFactory.address
-        );
+  it("Owner of RoyaltyProxy must be RoyaltyFactory", async function () {
+    const owner = await callableProxyVault.owner();
+    expect(owner).to.eq(royaltyFactory.address);
+  });
 
-    });
+  it("Gets platform fee", async function () {
+    const platformFee = await callableProxyVault.platformFee();
+    expect(platformFee).to.eq(500);
+  });
 
+  it("Sets platform fee", async function () {
+    await royaltyFactory.setPlatformFee(proxyVault.address, 1000);
+    const platformFee = await callableProxyVault.platformFee();
+    expect(platformFee).to.eq("1000");
+  });
 
+  it("Sets platform fee recipient", async function () {
+    await royaltyFactory.setPlatformFeeRecipient(
+      proxyVault.address,
+      account2.address
+    );
+    const platformFee = await callableProxyVault.platformFeeRecipient();
+    expect(platformFee).to.eq(account2.address);
+  });
+
+  it("Send to splitter", async function () {
+    let splitterBalance = await wEth.balanceOf(account1.address);
+    await callableProxyVault.sendToSplitter();
+    let platformShareInEth = (1 * 10) / 100;
+    let platformShare = BigNumber.from(
+      ethers.utils.parseEther(platformShareInEth.toString())
+    );
+    let finalSplitterBalance = BigNumber.from(splitterBalance)
+      .add(BigNumber.from(ethers.utils.parseEther("1")))
+      .sub(BigNumber.from(platformShare));
+    expect(finalSplitterBalance).to.eq(await wEth.balanceOf(account1.address));
+  });
 });
