@@ -1,115 +1,102 @@
-const { expect } = require("chai");
-const { ethers } = require("hardhat");
-const { BigNumber } = require("ethers");
+const { expect } = require('chai');
+const { ethers } = require('hardhat');
+// const { BigNumber } = require('ethers');
 
 const deployRoyaltyVault = async () => {
-  const RoyaltyVaultContract = await ethers.getContractFactory("RoyaltyVault");
+  const RoyaltyVaultContract = await ethers.getContractFactory('RoyaltyVault');
   const royaltyVault = await RoyaltyVaultContract.deploy();
-  return await royaltyVault.deployed();
+  return royaltyVault.deployed();
 };
 
 const deployRoyaltyFactory = async (royaltyVault) => {
   const RoyaltyVaultFactoryContract = await ethers.getContractFactory(
-    "RoyaltyVaultFactory"
+    'RoyaltyVaultFactory',
   );
   const royaltyVaultFactory = await RoyaltyVaultFactoryContract.deploy(
-    royaltyVault
+    royaltyVault,
   );
-  return await royaltyVaultFactory.deployed();
+  return royaltyVaultFactory.deployed();
 };
 
 const deployWeth = async () => {
-  const myWETHContract = await ethers.getContractFactory("WETH");
+  const myWETHContract = await ethers.getContractFactory('WETH');
   const myWETH = await myWETHContract.deploy();
-  return await myWETH.deployed();
+  return myWETH.deployed();
 };
 
-const createVault = async (royaltyFactory, collectionContract, wEth) => {
+describe('Creating Royalty Vault', () => {
+  let royaltyFactory;
+  let wEth;
   let royaltyVault;
-  royaltyTx = await royaltyFactory.createVault(collectionContract, wEth);
-  const royaltyVaultTx = await royaltyTx.wait(1);
-  const event = royaltyVaultTx.events.find(
-    (event) => event.event === "VaultCreated"
-  );
-  [royaltyVault] = event.args;
-  return royaltyVault;
-};
+  let proxyVault;
+  let callableProxyVault;
+  let funder;
+  let account1;
+  let account2;
 
-describe("Creating Royalty Vault", function () {
-  let royaltyFactory,
-    wEth,
-    royaltyVault,
-    collectionContract,
-    proxyVault,
-    callableProxyVault,
-    funder,
-    account1,
-    account2;
-
-  before(async function () {
-    [funder, collectionContract, account1, account2] =
-      await ethers.getSigners();
+  before(async () => {
+    [funder, account1, account2] = await ethers.getSigners();
 
     wEth = await deployWeth();
     royaltyVault = await deployRoyaltyVault();
     royaltyFactory = await deployRoyaltyFactory(royaltyVault.address);
-    let splitter = account1.address;
+    const splitter = account1.address;
 
     await royaltyFactory.connect(funder).createVault(splitter, wEth.address);
 
     // Compute address.
     const constructorArgs = ethers.utils.defaultAbiCoder.encode(
-      ["address"],
-      [splitter]
+      ['address'],
+      [splitter],
     );
     const salt = ethers.utils.keccak256(constructorArgs);
-    const proxyBytecode = (await ethers.getContractFactory("ProxyVault"))
+    const proxyBytecode = (await ethers.getContractFactory('ProxyVault'))
       .bytecode;
     const codeHash = ethers.utils.keccak256(proxyBytecode);
     const proxyAddress = await ethers.utils.getCreate2Address(
       royaltyFactory.address,
       salt,
-      codeHash
+      codeHash,
     );
 
     proxyVault = await (
-      await ethers.getContractAt("ProxyVault", proxyAddress)
+      await ethers.getContractAt('ProxyVault', proxyAddress)
     ).deployed();
 
     callableProxyVault = await (
-      await ethers.getContractAt("RoyaltyVault", proxyVault.address)
+      await ethers.getContractAt('RoyaltyVault', proxyVault.address)
     ).deployed();
   });
 
-  it("Should return correct RoyaltVault balance", async function () {
+  it('Should return correct RoyaltVault balance', async () => {
     await wEth
       .connect(funder)
-      .transfer(proxyVault.address, ethers.utils.parseEther("1"));
+      .transfer(proxyVault.address, ethers.utils.parseEther('1'));
     const balance = await wEth.balanceOf(proxyVault.address);
 
-    expect(await balance).to.eq(ethers.utils.parseEther("1").toString());
+    expect(await balance).to.eq(ethers.utils.parseEther('1').toString());
   });
 
-  it("Owner of RoyaltyProxy must be RoyaltyFactory", async function () {
+  it('Owner of RoyaltyProxy must be RoyaltyFactory', async () => {
     const owner = await callableProxyVault.owner();
     expect(owner).to.eq(royaltyFactory.address);
   });
 
-  it("Gets platform fee", async function () {
+  it('Gets platform fee', async () => {
     const platformFee = await callableProxyVault.platformFee();
     expect(platformFee).to.eq(500);
   });
 
-  it("Sets platform fee", async function () {
+  it('Sets platform fee', async () => {
     await royaltyFactory.setPlatformFee(proxyVault.address, 1000);
     const platformFee = await callableProxyVault.platformFee();
-    expect(platformFee).to.eq("1000");
+    expect(platformFee).to.eq('1000');
   });
 
-  it("Sets platform fee recipient", async function () {
+  it('Sets platform fee recipient', async () => {
     await royaltyFactory.setPlatformFeeRecipient(
       proxyVault.address,
-      account2.address
+      account2.address,
     );
     const platformFee = await callableProxyVault.platformFeeRecipient();
     expect(platformFee).to.eq(account2.address);
