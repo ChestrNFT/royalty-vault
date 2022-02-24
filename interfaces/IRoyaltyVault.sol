@@ -2,6 +2,8 @@
 pragma solidity ^0.8.4;
 
 interface IRoyaltyVault {
+    function splitter() external view returns (address);
+
     function getVaultBalance() external view returns (uint256);
 
     function sendToSplitter() external;
