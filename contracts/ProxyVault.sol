@@ -15,7 +15,7 @@ contract ProxyVault is VaultStorage, Ownable {
      */
     constructor() {
         royaltyVault = IVaultFactory(msg.sender).royaltyVault();
-        splitter = IVaultFactory(msg.sender).splitter();
+        splitterProxy = IVaultFactory(msg.sender).splitter();
         royaltyAsset = IVaultFactory(msg.sender).royaltyAsset();
         platformFee = 500; // 5%
         platformFeeRecipient = 0x0000000000000000000000000000000000000000;

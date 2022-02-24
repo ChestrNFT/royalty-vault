@@ -33,17 +33,17 @@ contract RoyaltyVault is VaultStorage, IRoyaltyVault, ERC165, Ownable {
             balanceOfVault > 0,
             "Vault does not have enough royalty Asset to send"
         );
-        require(splitter != address(0), "Splitter is not set");
+        require(splitterProxy != address(0), "Splitter is not set");
 
         uint256 platformShare = (balanceOfVault * platformFee) / 10000;
         uint256 splitterShare = balanceOfVault - platformShare;
 
         require(
-            IERC20(royaltyAsset).transfer(splitter, splitterShare) == true,
+            IERC20(royaltyAsset).transfer(splitterProxy, splitterShare) == true,
             "Failed to transfer royalty Asset to splitter"
         );
         require(
-            ISplitter(splitter).incrementWindow(splitterShare) == true,
+            ISplitter(splitterProxy).incrementWindow(splitterShare) == true,
             "Failed to increment splitter window"
         );
         require(
@@ -54,7 +54,7 @@ contract RoyaltyVault is VaultStorage, IRoyaltyVault, ERC165, Ownable {
             "Failed to transfer royalty Asset to platform fee recipient"
         );
 
-        emit RoyaltySentToSplitter(splitter, splitterShare);
+        emit RoyaltySentToSplitter(splitterProxy, splitterShare);
         emit FeeSentToPlatform(platformFeeRecipient, platformShare);
     }
 
@@ -82,7 +82,7 @@ contract RoyaltyVault is VaultStorage, IRoyaltyVault, ERC165, Ownable {
      * @dev Get Splitter address of proxyVault.
      */
     function getSplitter() public view override returns (address) {
-        return splitter;
+        return splitterProxy;
     }
 
     /**
