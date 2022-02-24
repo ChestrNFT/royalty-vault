@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+//SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.4;
 
 import {ProxyVault} from "./ProxyVault.sol";
@@ -10,7 +10,7 @@ contract RoyaltyVaultFactory {
 
     /**** Mutable data ****/
     address public royaltyAsset;
-    address public splitter;
+    address public splitterProxy;
 
     /**** Events ****/
 
@@ -34,14 +34,14 @@ contract RoyaltyVaultFactory {
         external
         returns (address vault)
     {
-        splitter = _splitter;
+        splitterProxy = _splitter;
         royaltyAsset = _royaltyAsset;
 
         vault = address(
             new ProxyVault{salt: keccak256(abi.encode(_splitter))}()
         );
 
-        delete splitter;
+        delete splitterProxy;
         delete royaltyAsset;
     }
 
