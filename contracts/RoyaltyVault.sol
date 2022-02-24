@@ -17,7 +17,7 @@ contract RoyaltyVault is VaultStorage, IRoyaltyVault, ERC165, Ownable {
     );
 
     /**
-     * @dev Getting WETH balance of Vault.
+     * @dev Getting royaltyAsset balance of Vault.
      */
     function getVaultBalance() public view override returns (uint256) {
         return IERC20(royaltyAsset).balanceOf(address(this));
@@ -29,7 +29,10 @@ contract RoyaltyVault is VaultStorage, IRoyaltyVault, ERC165, Ownable {
     function sendToSplitter() external override {
         uint256 balanceOfVault = getVaultBalance();
 
-        require(balanceOfVault > 0, "Vault has no WETH to send");
+        require(
+            balanceOfVault > 0,
+            "Vault does not have enough royalty Asset to send"
+        );
         require(splitter != address(0), "Splitter is not set");
 
         uint256 platformShare = (balanceOfVault * platformFee) / 10000;
@@ -37,7 +40,7 @@ contract RoyaltyVault is VaultStorage, IRoyaltyVault, ERC165, Ownable {
 
         require(
             IERC20(royaltyAsset).transfer(splitter, splitterShare) == true,
-            "Failed to transfer WETH to splitter"
+            "Failed to transfer royalty Asset to splitter"
         );
         require(
             ISplitter(splitter).incrementWindow(splitterShare) == true,
@@ -48,10 +51,10 @@ contract RoyaltyVault is VaultStorage, IRoyaltyVault, ERC165, Ownable {
                 platformFeeRecipient,
                 platformShare
             ) == true,
-            "Failed to transfer WETH to platform fee recipient"
+            "Failed to transfer royalty Asset to platform fee recipient"
         );
 
-        emit RoyaltySentToSplitter(splitter, balanceOfVault);
+        emit RoyaltySentToSplitter(splitter, splitterShare);
         emit FeeSentToPlatform(platformFeeRecipient, platformShare);
     }
 
