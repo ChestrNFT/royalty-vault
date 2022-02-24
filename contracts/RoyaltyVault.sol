@@ -79,6 +79,13 @@ contract RoyaltyVault is VaultStorage, IRoyaltyVault, ERC165, Ownable {
     }
 
     /**
+     * @dev Get Splitter address of proxyVault.
+     */
+    function getSplitter() public view override returns (address) {
+        return splitter;
+    }
+
+    /**
      * @dev Checks for support of IRoyaltyVault.
      */
     function supportsInterface(bytes4 interfaceId)
