@@ -1,30 +1,30 @@
-const { expect } = require("chai");
-const { ethers } = require("hardhat");
+const { expect } = require('chai');
+const { ethers } = require('hardhat');
 // const { BigNumber } = require('ethers');
 
 const deployRoyaltyVault = async () => {
-  const RoyaltyVaultContract = await ethers.getContractFactory("RoyaltyVault");
+  const RoyaltyVaultContract = await ethers.getContractFactory('RoyaltyVault');
   const royaltyVault = await RoyaltyVaultContract.deploy();
   return royaltyVault.deployed();
 };
 
 const deployRoyaltyFactory = async (royaltyVault) => {
   const RoyaltyVaultFactoryContract = await ethers.getContractFactory(
-    "RoyaltyVaultFactory"
+    'RoyaltyVaultFactory',
   );
   const royaltyVaultFactory = await RoyaltyVaultFactoryContract.deploy(
-    royaltyVault
+    royaltyVault,
   );
   return royaltyVaultFactory.deployed();
 };
 
 const deployWeth = async () => {
-  const myWETHContract = await ethers.getContractFactory("WETH");
+  const myWETHContract = await ethers.getContractFactory('WETH');
   const myWETH = await myWETHContract.deploy();
   return myWETH.deployed();
 };
 
-describe("Creating Royalty Vault", () => {
+describe('Creating Royalty Vault', () => {
   let royaltyFactory;
   let wEth;
   let royaltyVault;
@@ -46,63 +46,63 @@ describe("Creating Royalty Vault", () => {
 
     // Compute address.
     const constructorArgs = ethers.utils.defaultAbiCoder.encode(
-      ["address"],
-      [splitter]
+      ['address'],
+      [splitter],
     );
     const salt = ethers.utils.keccak256(constructorArgs);
-    const proxyBytecode = (await ethers.getContractFactory("ProxyVault"))
+    const proxyBytecode = (await ethers.getContractFactory('ProxyVault'))
       .bytecode;
     const codeHash = ethers.utils.keccak256(proxyBytecode);
     const proxyAddress = await ethers.utils.getCreate2Address(
       royaltyFactory.address,
       salt,
-      codeHash
+      codeHash,
     );
 
     proxyVault = await (
-      await ethers.getContractAt("ProxyVault", proxyAddress)
+      await ethers.getContractAt('ProxyVault', proxyAddress)
     ).deployed();
 
     callableProxyVault = await (
-      await ethers.getContractAt("RoyaltyVault", proxyVault.address)
+      await ethers.getContractAt('RoyaltyVault', proxyVault.address)
     ).deployed();
   });
 
-  it("Should return correct RoyaltVault balance", async () => {
+  it('Should return correct RoyaltVault balance', async () => {
     await wEth
       .connect(funder)
-      .transfer(proxyVault.address, ethers.utils.parseEther("1"));
+      .transfer(proxyVault.address, ethers.utils.parseEther('1'));
     const balance = await wEth.balanceOf(proxyVault.address);
 
-    expect(await balance).to.eq(ethers.utils.parseEther("1").toString());
+    expect(await balance).to.eq(ethers.utils.parseEther('1').toString());
   });
 
-  it("Owner of RoyaltyProxy must be RoyaltyFactory", async () => {
+  it('Owner of RoyaltyProxy must be RoyaltyFactory', async () => {
     const owner = await callableProxyVault.owner();
     expect(owner).to.eq(royaltyFactory.address);
   });
 
-  it("Gets platform fee", async () => {
+  it('Gets platform fee', async () => {
     const platformFee = await callableProxyVault.platformFee();
     expect(platformFee).to.eq(500);
   });
 
-  it("Sets platform fee", async () => {
+  it('Sets platform fee', async () => {
     await royaltyFactory.setPlatformFee(proxyVault.address, 1000);
     const platformFee = await callableProxyVault.platformFee();
-    expect(platformFee).to.eq("1000");
+    expect(platformFee).to.eq('1000');
   });
 
-  it("Sets platform fee recipient", async () => {
+  it('Sets platform fee recipient', async () => {
     await royaltyFactory.setPlatformFeeRecipient(
       proxyVault.address,
-      account2.address
+      account2.address,
     );
     const platformFee = await callableProxyVault.platformFeeRecipient();
     expect(platformFee).to.eq(account2.address);
   });
 
-  it("Gets splitter", async () => {
+  it('Gets splitter', async () => {
     const splitter = await callableProxyVault.getSplitter();
     expect(splitter).to.eq(account1.address);
   });
