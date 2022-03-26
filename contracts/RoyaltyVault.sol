@@ -15,6 +15,8 @@ contract RoyaltyVault is VaultStorage, IRoyaltyVault, ERC165, Ownable {
         address indexed platformFeeRecipient,
         uint256 amount
     );
+    event NewRoyaltyVaultPlatformFee(uint256 platformFee);
+    event NewRoyaltyVaultPlatformFeeRecipient(address recipient);
 
     /**
      * @dev Getting royaltyAsset balance of Vault.
@@ -64,6 +66,7 @@ contract RoyaltyVault is VaultStorage, IRoyaltyVault, ERC165, Ownable {
      */
     function setPlatformFee(uint256 _platformFee) external override onlyOwner {
         platformFee = _platformFee;
+        emit NewRoyaltyVaultPlatformFee(_platformFee);
     }
 
     /**
@@ -76,6 +79,7 @@ contract RoyaltyVault is VaultStorage, IRoyaltyVault, ERC165, Ownable {
         onlyOwner
     {
         platformFeeRecipient = _platformFeeRecipient;
+        emit NewRoyaltyVaultPlatformFeeRecipient(_platformFeeRecipient)
     }
 
     /**
