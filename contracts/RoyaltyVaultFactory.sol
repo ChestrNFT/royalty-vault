@@ -11,6 +11,8 @@ contract RoyaltyVaultFactory {
     /**** Mutable data ****/
     address public royaltyAsset;
     address public splitterProxy;
+    uint256 public platformFee;
+    address public platformFeeRecipient;
 
     /**** Events ****/
 
@@ -22,6 +24,8 @@ contract RoyaltyVaultFactory {
      */
     constructor(address _royaltyVault) {
         royaltyVault = _royaltyVault;
+        platformFee = 500; // 5%
+        platformFeeRecipient = 0x0000000000000000000000000000000000000000;
     }
 
     /**
