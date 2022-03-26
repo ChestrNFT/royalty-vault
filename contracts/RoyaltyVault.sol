@@ -79,7 +79,7 @@ contract RoyaltyVault is VaultStorage, IRoyaltyVault, ERC165, Ownable {
         onlyOwner
     {
         platformFeeRecipient = _platformFeeRecipient;
-        emit NewRoyaltyVaultPlatformFeeRecipient(_platformFeeRecipient)
+        emit NewRoyaltyVaultPlatformFeeRecipient(_platformFeeRecipient);
     }
 
     /**
