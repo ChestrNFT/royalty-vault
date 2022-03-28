@@ -1,6 +1,5 @@
 const { expect } = require('chai');
 const { ethers } = require('hardhat');
-// const { BigNumber } = require('ethers');
 
 const deployRoyaltyVault = async () => {
   const RoyaltyVaultContract = await ethers.getContractFactory('RoyaltyVault');
@@ -106,17 +105,4 @@ describe('Creating Royalty Vault', () => {
     const splitter = await callableProxyVault.getSplitter();
     expect(splitter).to.eq(account1.address);
   });
-
-  // it("Send to splitter", async function () {
-  //   let splitterBalance = await wEth.balanceOf(account1.address);
-  //   await callableProxyVault.sendToSplitter();
-  //   let platformShareInEth = (1 * 10) / 100;
-  //   let platformShare = BigNumber.from(
-  //     ethers.utils.parseEther(platformShareInEth.toString())
-  //   );
-  //   let finalSplitterBalance = BigNumber.from(splitterBalance)
-  //     .add(BigNumber.from(ethers.utils.parseEther("1")))
-  //     .sub(BigNumber.from(platformShare));
-  //   expect(finalSplitterBalance).to.eq(await wEth.balanceOf(account1.address));
-  // });
 });
